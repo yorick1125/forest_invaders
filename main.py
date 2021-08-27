@@ -39,6 +39,8 @@ arial = pygame.font.Font(None, 45)
 # Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
 
 # IMAGES
 #-----------------------------------------------------------------------------------------
@@ -127,6 +129,7 @@ class Player(pygame.sprite.Sprite):
         self.attacking = False
         self.sliding = False
         self.health = health
+        self.max_health = health
         self.accel_timer = pygame.time.get_ticks()
         self.speed = 10
 
@@ -139,6 +142,7 @@ class Player(pygame.sprite.Sprite):
         self.hurt = False
         self.recoil = False
         self.recoil_counter = 0
+        self.bounce = False
 
 
         # animation variables
@@ -462,6 +466,7 @@ class Player(pygame.sprite.Sprite):
         # check for recoil
         if self.name == "snake" and self.action == 3:
             self.hurt = True
+            self.bounce = True
 
         # jump
         if self.jump and not self.in_air:
@@ -470,31 +475,30 @@ class Player(pygame.sprite.Sprite):
             self.in_air = True
 
 
-        # Recoil
-        if self.hurt and not self.recoil:
-            # recoil horizontally
-            dx += self.direction * 3
+        # Bounce
+        if self.bounce and not self.in_air:
             # recoil vertically
-            self.velocity.y = -2
-            self.recoil = True
-            self.hurt = False
+            self.velocity.x = 2 * self.direction
+            self.velocity.y = -9
+            self.bounce = False
+            self.in_air = True
 
-        if self.recoil:
-            if self.recoil_counter > 3:
-                self.recoil = False
-            else:
-                self.recoil_counter += 1
+
 
 
 
         # apply gravity and recoil
         self.velocity.y += GRAVITY
+        dx += self.velocity.x
         dy += self.velocity.y
 
         # check collision with floor
         if self.rect.bottom + dy > FLOOR_POSITION:
             dy = FLOOR_POSITION - self.rect.bottom
             self.in_air = False
+            self.bounce = False
+            self.velocity.y = 0
+            self.velocity.x = 0
 
         # check if going off the edges of the screen
         if self.rect.left + dx < 0 or self.rect.right + dx > SCREEN_WIDTH:
@@ -581,8 +585,8 @@ class Player(pygame.sprite.Sprite):
         hit_range_rect = pygame.Rect(self.rect.left - 10, self.rect.top - 10, self.rect.width + 10, self.rect.height + 10)
         if hit_range_rect.colliderect(target.rect):
             target.update_action(3)
-            target.recoil = True
             target.health -= 3
+            target.direction = self.direction
 
     def draw(self):
         if self.flipped:
@@ -605,6 +609,40 @@ class Player(pygame.sprite.Sprite):
         player.moving_right = False
         player.moving_left = False
 
+class HealthBar():
+    def __init__(self, x, y, hp, max_hp):
+        self.x = x
+        self.y = y
+        self.hp = hp
+        self.max_hp = hp
+
+    def draw(self, hp):
+        # update with new health
+        self.hp = hp
+        # calculate health ratio
+        ratio = self.hp / self.max_hp
+        pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
+        pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
+
+class DamageText(pygame.sprite.Sprite):
+    def __init__(self, x, y, damage, color):
+        super().__init__()
+        self.image = pokeFont.render(damage, True, color)
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.counter = 0
+
+
+    def update(self):
+        # move damage text up
+        self.rect.y -= 1
+
+        # delete the text after a few seconds
+        self.counter += 1
+
+        if self.counter > 30:
+            self.kill()
+
 # BUTTONS 
 # -----------------------------------------------------------------------------------------
 # create buttons
@@ -614,6 +652,8 @@ restart_button = button.Button(330, 150, restart_img, 0.6)
 restart_button.rect.centerx = SCREEN_WIDTH // 2
 victory_button = button.Button(330, 10, victory_img, 1 )
 victory_button.rect.centerx = SCREEN_WIDTH // 2
+
+
 
 # MENU 
 # -----------------------------------------------------------------------------------------
@@ -648,6 +688,7 @@ quit = False
 level = 1
 # Creating players and enemies
 player = Player('adventurer', 200, 200, 100, 100, 100, False)
+player_healthbar = HealthBar(SCREEN_WIDTH - 250, 40 , player.health, player.max_health)
 # Adding enemies to the group
 enemy_group = pygame.sprite.Group()
 number_of_enemies = 10
@@ -668,6 +709,8 @@ while not quit:
         draw_text(str(seconds_left) + " second left", pygame.font.Font("Pokemon GB.ttf", 20), (255, 200, 0), 10, 100)
     else:
         draw_text(str(seconds_left) + " seconds left", pygame.font.Font("Pokemon GB.ttf", 20), (255, 200, 0), 10, 100)
+    player_healthbar.draw(player.health)
+    draw_text("Health: " + str(player.health), pygame.font.Font("Pokemon GB.ttf", 20), RED, SCREEN_WIDTH - 250, 10)
 
     # check if a second has passed to reduce seconds left
     if pygame.time.get_ticks() - timer > 1000 and game_over == 0:
