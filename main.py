@@ -10,7 +10,7 @@ pygame.init()
 clock = pygame.time.Clock()
 FPS = 60
 game_over = 0
-seconds_left = 30
+seconds_left = 40
 timer = pygame.time.get_ticks()
 
 # load music and sounds
@@ -143,6 +143,7 @@ class Player(pygame.sprite.Sprite):
         self.recoil = False
         self.recoil_counter = 0
         self.bounce = False
+        self.hit_count = 0
 
 
         # animation variables
@@ -466,7 +467,7 @@ class Player(pygame.sprite.Sprite):
         # check for recoil
         if self.name == "snake" and self.action == 3:
             self.hurt = True
-            self.bounce = True
+            self.hit_count += 1
 
         # jump
         if self.jump and not self.in_air:
@@ -476,12 +477,13 @@ class Player(pygame.sprite.Sprite):
 
 
         # Bounce
-        if self.bounce and not self.in_air:
-            # recoil vertically
-            self.velocity.x = 2 * self.direction
-            self.velocity.y = -9
+        if self.hit_count >= 3 and not self.in_air:
+            #recoil vertically
+            self.velocity.x = 2 * self.direction * (random.uniform(0.1, 3))
+            self.velocity.y = -9 * (random.uniform(0.5, 1))
             self.bounce = False
             self.in_air = True
+            self.hit_count = 0
 
 
 
@@ -586,7 +588,7 @@ class Player(pygame.sprite.Sprite):
         if hit_range_rect.colliderect(target.rect):
             target.update_action(3)
             target.health -= 3
-            target.direction = self.direction
+            target.direction = random.randint(-1, 1)
 
     def draw(self):
         if self.flipped:
@@ -694,7 +696,7 @@ enemy_group = pygame.sprite.Group()
 number_of_enemies = 10
 for i in range(number_of_enemies):
     snake = Player('snake', random.randint(10, 10000), 600, 100, 100, 100, False)
-    enemy_group.add(snake)
+    enemy_group.add(snake) 
 
 while not quit:
     clock.tick(FPS)
@@ -710,7 +712,7 @@ while not quit:
     else:
         draw_text(str(seconds_left) + " seconds left", pygame.font.Font("Pokemon GB.ttf", 20), (255, 200, 0), 10, 100)
     player_healthbar.draw(player.health)
-    draw_text("Health: " + str(player.health), pygame.font.Font("Pokemon GB.ttf", 20), RED, SCREEN_WIDTH - 250, 10)
+    draw_text("Health: " + str(player.health), pygame.font.Font("Pokemon GB.ttf", 20), (255, 200, 0), SCREEN_WIDTH - 250, 10)
 
     # check if a second has passed to reduce seconds left
     if pygame.time.get_ticks() - timer > 1000 and game_over == 0:
@@ -734,7 +736,7 @@ while not quit:
             if victory_button.draw(screen):
                 level = level + 1
                 timer = pygame.time.get_ticks()
-                seconds_left = 20 * level * (1 - (level//10))
+                seconds_left = 30 * level * (1 - (level//10))
                 player = Player('adventurer', 200, 200, 100, 100, 100, False)
                 enemy_group = pygame.sprite.Group()
                 number_of_enemies = number_of_enemies + 10
@@ -750,7 +752,7 @@ while not quit:
             screen.blit(defeat_img, (defeat_rect.x, defeat_rect.y))
         if restart_button.draw(screen):
             timer = pygame.time.get_ticks()
-            seconds_left = 20 * level * (1 - (level//10))
+            seconds_left = 30 * level * (1 - (level//10))
             screen_scroll = 0
             player = Player('adventurer', 200, 200, 100, 100, 100, False)
             enemy_group = pygame.sprite.Group()
